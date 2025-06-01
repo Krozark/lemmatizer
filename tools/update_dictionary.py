@@ -1,10 +1,12 @@
 import lzma
+import os
 import pickle
 import sys
 from collections import defaultdict
 from operator import itemgetter
-import os
 
+import spacy
+from tqdm import tqdm
 
 
 def extract_plzma(file_path: str):
@@ -12,7 +14,7 @@ def extract_plzma(file_path: str):
     with lzma.open(file_path, "rb") as filehandle:
         pickled_dict = pickle.load(filehandle)
         assert isinstance(pickled_dict, dict)
-        for text, lemma in pickled_dict.items():
+        for text, lemma in tqdm(pickled_dict.items(), desc=f"Loading {file_path}"):
             column_pairs.append((text.decode().strip(), lemma.decode().strip()))
 
     return column_pairs
@@ -21,7 +23,7 @@ def extract_mlex(file_path):
     column_pairs = []
 
     with open(file_path, 'r', encoding='utf-8') as file:
-        for line in file:
+        for line in tqdm(file, desc=f"Loading {file_path}"):
             columns = line.strip().split('\t')
             l = len(columns)
             to_add = []
@@ -40,7 +42,7 @@ def extract_lemmatization_file(file_path):
     input_data = []
     with open(file_path, "r") as f:
         data = f.read().split("\n")
-        for line in data:
+        for line in tqdm(data, desc=f"Loading {file_path}"):
             if not line:
               continue
 
@@ -61,6 +63,7 @@ def save_dict(mydict, lang):
 
 def build_lang(lang):
     data = []
+    # load files
     for root, dir, files in os.walk(lang):
         for filename in files:
             path = os.path.join(root, filename)
@@ -72,7 +75,9 @@ def build_lang(lang):
                 data += extract_mlex(path)
             elif ext == "txt":
                 data += extract_lemmatization_file(path)
-
+    # load from spacy
+    data += get_from_spacy(f"{lang}_core_news_md")
+    # Load from language
     func_name = f"new_pair_{lang}"
     func = getattr(sys.modules[__name__], func_name)
     if func:
@@ -86,19 +91,32 @@ def build_lang(lang):
     # sort data
     data = list(sorted(data))
 
+    # TODO Filter
+    
     # save to disk
-    with open(f"{lang}-save.txt", "w+") as f:
-        for txt, lemma in data:
+    filename = "dictionary-%s.txt" % lang
+    with open(filename, "w+") as f:
+        for txt, lemma in tqdm(data, desc="Create output"):
             f.write(f"{txt}\t{lemma}\n")
 
-    storage = defaultdict(set)
-    for key, value in data:
-        storage[key].add(value)
-    save_dict(storage, lang=lang)
 
+    # storage = defaultdict(set)
+    # for key, value in data:
+    #     storage[key].add(value)
+    # save_dict(storage, lang=lang)
+
+def get_from_spacy(model):
+    data = []
+    # python -m spacy download fr_core_news_md
+    nlp = spacy.load(model, disable=["parser", "ner"])
+    vocab = list(nlp.vocab.strings)
+    for word in tqdm(vocab, desc="Copy from spacy"):
+        token = nlp(word)[0]
+        data.append((word, token.lemma_))
+    return data
 
 def new_pair_fr():
-    return [
+    data = [
         ("baux", "bail"),
         ("étaient", "être"),
         ("brillante", "brillant"),
@@ -110,6 +128,7 @@ def new_pair_fr():
         ("sorcière", "sorcier"),
         ("faille", "falloir"),
     ]
+    return data
 
     # # remove self
     # for k,v in storage.items():
