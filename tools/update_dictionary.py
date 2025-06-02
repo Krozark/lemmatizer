@@ -1,9 +1,10 @@
 import lzma
 import os
 import pickle
+import string
 import sys
-from collections import defaultdict
 from operator import itemgetter
+from collections import defaultdict
 
 import spacy
 from tqdm import tqdm
@@ -46,8 +47,11 @@ def extract_lemmatization_file(file_path):
             if not line:
               continue
 
-            lemma, txt= line.split("\t")
-            input_data.append((txt.strip(), lemma.strip()))
+            try:
+                lemma, txt= line.split("\t", 1)
+                input_data.append((txt.strip(), lemma.strip()))
+            except Exception as e:
+                pass
     return input_data
 
 def save_dict(mydict, lang):
@@ -76,7 +80,7 @@ def build_lang(lang):
             elif ext == "txt":
                 data += extract_lemmatization_file(path)
     # load from spacy
-    data += get_from_spacy(f"{lang}_core_news_md")
+    # data += get_from_spacy(f"{lang}_core_news_md")
     # Load from language
     func_name = f"new_pair_{lang}"
     func = getattr(sys.modules[__name__], func_name)
@@ -86,23 +90,69 @@ def build_lang(lang):
 
     # remove case
     data = [(txt.lower(), lemma.lower()) for txt, lemma in data]
+
+    # Filter
+    filtered_data = []
+    for txt, lemma in tqdm(data, desc="Filter data"):
+        if not txt or not lemma:
+            continue
+
+        if any(txt[0] == x or lemma[0] == x for x in string.punctuation):
+            continue
+
+        for x in "’`'":
+            txt = txt.replace(x, "'")
+            lemma = lemma.replace(x, "'")
+
+        if any(x in txt or x in lemma for x in """0123456789!"#$%&()*+,/:;<=>?@[\]^_{|}~."""):
+            continue
+
+        if txt == lemma:
+            continue
+
+        filtered_data.append((txt, lemma))
+    data = filtered_data
+
+    # make unique_data
+    data = list(set(data))
+
+
+    storage = defaultdict(set)
+    for txt, lemma in tqdm(data, desc="Merging lemma of same text"):
+        storage[txt].add(lemma)
+
+    for i in range(0, 6):
+        new_storage = defaultdict(set)
+        for txt, lemmas in tqdm(storage.items(), desc=f"Reduce by searchin in tree for lemma. Iteration {i}"):
+            for lemma in lemmas:
+                root = storage.get(lemma, set())
+                if root:
+                    new_lemma = root.difference({txt})
+                    if new_lemma:
+                        new_storage[txt] |= new_lemma
+                else:
+                    new_storage[txt].add(lemma)
+        storage = new_storage
+
+    # save to disk
+    data = []
+    for txt, lemmas in tqdm(storage.items(), desc="Convert storage to list"):
+        for lemma in lemmas:
+            data.append((txt, lemma))
+
     # make unique_data
     data = list(set(data))
     # sort data
     data = list(sorted(data))
 
-    # TODO Filter
-    
     # save to disk
-    filename = "dictionary-%s.txt" % lang
-    with open(filename, "w+") as f:
+    filename_1 = "dictionary-%s-lemma-txt.txt" % lang
+    filename_2 = "dictionary-%s-txt-lemma.txt" % lang
+    with open(filename_1, "w+") as lemma_txt, open(filename_2, "w+") as txt_lemma:
         for txt, lemma in tqdm(data, desc="Create output"):
-            f.write(f"{txt}\t{lemma}\n")
+            lemma_txt.write(f"{lemma}\t{txt}\n")
+            txt_lemma.write(f"{txt}\t{lemma}\n")
 
-
-    # storage = defaultdict(set)
-    # for key, value in data:
-    #     storage[key].add(value)
     # save_dict(storage, lang=lang)
 
 def get_from_spacy(model):
