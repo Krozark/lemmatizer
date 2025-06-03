@@ -7,7 +7,7 @@ class Lookup:
     def __init__(self, lang: str):
         self._lang: str = lang
 
-    def get_lemma(self, word: str) -> list[str]:
+    def get_lemma(self, word: str) -> set[str]:
         raise NotImplementedError
 
 
@@ -17,9 +17,9 @@ class DictionaryLookups(Lookup):
         self._dict = {}
         self._load_from_disk()
 
-    def get_lemma(self, word: str) -> list[str]:
+    def get_lemma(self, word: str) -> set[str]:
         lemmas_set = self._dict.get(word.lower(), {word.lower()})
-        return list(lemmas_set)
+        return lemmas_set
 
     def _get_file_path(self):
         filename = LEMMATIZER_DICTIONARY_FILENAME_TEMPLATE % self._lang

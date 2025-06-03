@@ -13,7 +13,11 @@ setuptools.setup(
     url="https://github.com/Krozark/lemmatizer",
     keywords="lemmatizer",
     packages=setuptools.find_packages(),
-    package_data={"lemmatizer" : ["data/*.txt",]},
+    package_data={
+        "lemmatizer": [
+            "data/*.txt",
+        ]
+    },
     include_package_data=True,
     classifiers=[
         "Programming Language :: Python",

@@ -5,7 +5,16 @@ Those lemma are loade from a dictionnary.
 
 ## Supported languages
 
-| language | code | 
+| language | code |
 | -------- | ---- |
-| french | fr | 
+| french | fr |
 
+## Usage
+
+```python
+from lemmatizer import Lemmatizer
+
+nlp = Lemmatizer()
+for lemma in nlp.get_lemma("moulons", "fr"):
+    print(lemma)
+```
