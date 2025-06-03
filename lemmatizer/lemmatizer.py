@@ -1,2 +1,4 @@
-class Lemmatizer:
-    pass
+from .lookups import DictionaryLookups
+
+Lemmatizer = DictionaryLookups
+
