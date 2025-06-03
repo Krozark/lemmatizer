@@ -97,18 +97,18 @@ def build_lang(lang):
         if not txt or not lemma:
             continue
 
-        if any(txt[0] == x or lemma[0] == x for x in string.punctuation):
+        if lemma in string.punctuation:
             continue
 
         for x in "’`'":
             txt = txt.replace(x, "'")
             lemma = lemma.replace(x, "'")
 
-        if any(x in txt or x in lemma for x in """0123456789!"#$%&()*+,/:;<=>?@[\]^_{|}~."""):
-            continue
+        # if any(x in txt or x in lemma for x in """0123456789!"#$%&()*+,/:;<=>?@[\]^_{|}~."""):
+        #     continue
 
-        if txt == lemma:
-            continue
+        # if txt == lemma:
+        #     continue
 
         filtered_data.append((txt, lemma))
     data = filtered_data
@@ -116,25 +116,29 @@ def build_lang(lang):
     # make unique_data
     data = list(set(data))
 
-
     storage = defaultdict(set)
     for txt, lemma in tqdm(data, desc="Merging lemma of same text"):
         storage[txt].add(lemma)
 
-    for i in range(0, 6):
+    for i in range(0, 1):
         new_storage = defaultdict(set)
-        for txt, lemmas in tqdm(storage.items(), desc=f"Reduce by searchin in tree for lemma. Iteration {i}"):
+        for txt, lemmas in tqdm(storage.items(), desc=f"Reduce by searching in tree for lemma. Iteration {i}"):
             for lemma in lemmas:
-                root = storage.get(lemma, set())
-                if root:
-                    new_lemma = root.difference({txt})
-                    if new_lemma:
-                        new_storage[txt] |= new_lemma
-                else:
-                    new_storage[txt].add(lemma)
+                new_storage[txt].add(lemma)
+                lemma_lemmas = storage.get(lemma, set())
+                if lemma_lemmas:
+                     new_storage[txt] |= lemma_lemmas
+
         storage = new_storage
 
-    # save to disk
+    # remove simgle lemma on itself
+    new_storage = defaultdict(set)
+    for txt, lemmas in tqdm(storage.items(), desc="Removing useless dada"):
+        if lemmas != {txt}:
+            new_storage[txt] = lemmas
+    storage = new_storage
+
+
     data = []
     for txt, lemmas in tqdm(storage.items(), desc="Convert storage to list"):
         for lemma in lemmas:
@@ -146,8 +150,8 @@ def build_lang(lang):
     data = list(sorted(data))
 
     # save to disk
-    filename_1 = "dictionary-%s-lemma-txt.txt" % lang
-    filename_2 = "dictionary-%s-txt-lemma.txt" % lang
+    filename_1 = "dictionary-%s-lemma-word.txt" % lang
+    filename_2 = "dictionary-%s-word-lemma.txt" % lang
     with open(filename_1, "w+") as lemma_txt, open(filename_2, "w+") as txt_lemma:
         for txt, lemma in tqdm(data, desc="Create output"):
             lemma_txt.write(f"{lemma}\t{txt}\n")
@@ -177,6 +181,13 @@ def new_pair_fr():
         ("chiennes", "chien"),
         ("sorcière", "sorcier"),
         ("faille", "falloir"),
+        ("on", "il"),
+        ("c'", "cela"),
+        ("l'", "le"),
+        ("s'", "se"),
+        ("du", "de"),
+        ("du", "le"),
+        ("journée", "jour"),
     ]
     return data
 
