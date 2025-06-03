@@ -35,7 +35,7 @@ class DictionaryLookups(Lookup):
                 data = {} if reset else self._dict
                 for line in word_lemma_file.readlines():
                     line = line.rstrip()
-                    
+
                     if not line:
                         continue
 
