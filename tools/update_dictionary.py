@@ -247,4 +247,3 @@ def new_pair_fr():
 if __name__ == "__main__":
     lang = "fr"
     build_lang(lang)
-

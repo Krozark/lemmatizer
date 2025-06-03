@@ -1,21 +1,23 @@
-from .const import LEMMATIZER_DATA_DIRECTORY_PATH, LEMMATIZER_DICTIONARY_FILENAME_TEMPLATE
 import os
 
-class Lookup:
-    def __init__(self, lang:str):
-        self._lang :str = lang
+from .const import LEMMATIZER_DATA_DIRECTORY_PATH, LEMMATIZER_DICTIONARY_FILENAME_TEMPLATE
 
-    def get_lemma(self,word:str) -> list[str]:
+
+class Lookup:
+    def __init__(self, lang: str):
+        self._lang: str = lang
+
+    def get_lemma(self, word: str) -> list[str]:
         raise NotImplementedError
 
-class DictionaryLookups(Lookup):
 
-    def __init__(self,lang:str):
+class DictionaryLookups(Lookup):
+    def __init__(self, lang: str):
         super().__init__(lang)
         self._dict = {}
         self._load_from_disk()
 
-    def get_lemma(self, word:str) -> list[str]:
+    def get_lemma(self, word: str) -> list[str]:
         lemmas_set = self._dict.get(word.lower(), {word.lower()})
         return list(lemmas_set)
 
@@ -30,7 +32,7 @@ class DictionaryLookups(Lookup):
         if not os.path.isfile(path):
             raise RuntimeError(f"File {path} don’t exists.")
 
-        with open(path, "r") as word_lemma_file:
+        with open(path) as word_lemma_file:
             try:
                 data = {} if reset else self._dict
                 for line in word_lemma_file.readlines():
